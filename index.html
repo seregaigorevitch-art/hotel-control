@@ -2,40 +2,66 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <title>HOTEL ONLINE CONTROL v5.3 PRO</title>
+    <title>HOTEL ONLINE CONTROL v5.4 PRO</title>
     <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-database-compat.js"></script>
     
     <style>
-        :root { --bg: #f0f4f8; --card: #fff; --primary: #3498db; --success: #2ecc71; --warning: #f1c40f; --danger: #e74c3c; --dark: #2c3e50; }
+        :root { 
+            --bg: #f0f4f8; 
+            --card: #fff; 
+            --primary: #3498db; 
+            --success: #2ecc71; /* Зеленый - 1 выезд */
+            --trip2: #4fc3f7;   /* Голубой - 2 выезд */
+            --trip3: #f1c40f;   /* Желтый - 3 выезд */
+            --danger: #e74c3c;  /* Красный - Замечания */
+            --dark: #2c3e50; 
+        }
         body { font-family: 'Segoe UI', sans-serif; background: var(--bg); margin: 0; padding: 10px; color: #2c3e50; }
+        
         .sync-status { position: fixed; top: 10px; right: 10px; padding: 5px 10px; border-radius: 5px; font-size: 12px; background: #fff; box-shadow: 0 2px 5px rgba(0,0,0,0.1); z-index: 1000; font-weight: bold; }
         .lock-btn { position: fixed; top: 10px; left: 10px; padding: 8px 15px; border-radius: 8px; border: none; cursor: pointer; font-weight: bold; z-index: 1000; background: #e74c3c; color: white; box-shadow: 0 2px 5px rgba(0,0,0,0.2); }
         .lock-btn.unlocked { background: #2ecc71; }
         
-        .dashboard { background: var(--dark); color: white; padding: 15px; border-radius: 15px; margin: 40px 0 15px 0; display: flex; justify-content: space-around; text-align: center; flex-wrap: wrap; }
+        /* Легенда цветов */
+        .legend { background: white; padding: 10px; border-radius: 12px; margin-top: 45px; display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; font-size: 12px; font-weight: bold; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
+        .legend-item { display: flex; align-items: center; gap: 5px; }
+        .dot { width: 12px; height: 12px; border-radius: 3px; }
+
+        .dashboard { background: var(--dark); color: white; padding: 15px; border-radius: 15px; margin: 10px 0 15px 0; display: flex; justify-content: space-around; text-align: center; flex-wrap: wrap; }
         .dash-val { font-size: 20px; font-weight: bold; color: var(--success); }
+        
         .header { background: white; padding: 15px; border-radius: 15px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); margin-bottom: 15px; position: sticky; top: 5px; z-index: 100; }
         .floor-nav { display: flex; justify-content: center; gap: 5px; flex-wrap: wrap; margin-bottom: 10px; }
         .floor-btn-group { display: flex; align-items: center; background: #eee; border-radius: 8px; border: 1px solid #ddd; }
         .floor-btn { padding: 8px 12px; border: none; background: transparent; cursor: pointer; font-weight: bold; font-size: 14px; }
         .floor-btn.active { background: var(--primary); color: white; border-radius: 7px; }
+        
         .toggle-floor, .toggle-room { padding: 8px; cursor: pointer; border: none; background: transparent; opacity: 0.7; }
         .toggle-floor { border-left: 1px solid #ccc; }
         .toggle-room { font-size: 14px; float: right; margin-top: -5px; }
         .off { opacity: 0.2 !important; filter: grayscale(1); }
+        
         .filter-btn { padding: 8px 20px; border-radius: 20px; border: 2px solid var(--primary); cursor: pointer; font-weight: bold; background: white; }
         .filter-btn.active { background: var(--danger); color: white; border-color: var(--danger); }
+        
         .summary-panel { display: flex; flex-wrap: wrap; gap: 5px; justify-content: center; margin-top: 10px; }
-        .stat-item { padding: 4px 10px; border-radius: 12px; font-size: 11px; font-weight: bold; color: white; background: var(--danger); }
-        .stat-item.complete { background: var(--success); }
+        .stat-item { padding: 4px 10px; border-radius: 12px; font-size: 11px; font-weight: bold; color: white; background: #95a5a6; }
+        .stat-item.active { background: var(--primary); }
+
         .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 15px; }
         .card { background: var(--card); padding: 12px; border-radius: 12px; border-top: 5px solid var(--primary); box-shadow: 0 4px 6px rgba(0,0,0,0.05); position: relative; }
         .room-num { font-size: 1.2em; font-weight: bold; margin-bottom: 8px; color: var(--primary); border-bottom: 1px solid #eee; padding-bottom: 5px; }
+        
         .items { display: flex; flex-wrap: wrap; gap: 4px; }
-        .btn { padding: 6px 7px; border-radius: 4px; border: 1px solid #ddd; font-size: 10px; cursor: pointer; font-weight: 700; background: #f8f9fa; }
+        .btn { padding: 6px 7px; border-radius: 4px; border: 1px solid #ddd; font-size: 10px; cursor: pointer; font-weight: 700; background: #f8f9fa; transition: 0.2s; }
+        
+        /* Цвета статусов */
         .btn.status-1 { background: var(--success); color: white; border-color: var(--success); }
-        .btn.status-2 { background: var(--warning); color: #000; border-color: var(--warning); }
+        .btn.status-2 { background: var(--trip2); color: white; border-color: var(--trip2); }
+        .btn.status-3 { background: var(--trip3); color: #000; border-color: var(--trip3); }
+        .btn.status-4 { background: var(--danger); color: white; border-color: var(--danger); }
+
         .input-sub { width: 100%; margin-top: 8px; border: 1px solid #eee; border-radius: 5px; padding: 6px; font-size: 11px; box-sizing: border-box; }
     </style>
 </head>
@@ -44,14 +70,21 @@
 <button class="lock-btn" id="lockBtn" onclick="askAccess()">🔒 Доступ закрыт</button>
 <div class="sync-status" id="syncStatus">☁️ Соединение...</div>
 
+<div class="legend">
+    <div class="legend-item"><div class="dot" style="background:var(--success)"></div> 1-й выезд</div>
+    <div class="legend-item"><div class="dot" style="background:var(--trip2)"></div> 2-й выезд</div>
+    <div class="legend-item"><div class="dot" style="background:var(--trip3)"></div> 3-й выезд</div>
+    <div class="legend-item"><div class="dot" style="background:var(--danger)"></div> Замечания</div>
+</div>
+
 <div class="dashboard">
-    <div>ПРОГРЕСС ОБЪЕКТА: <div id="totalProgress" class="dash-val">0%</div></div>
+    <div>ГОТОВНОСТЬ ОБЪЕКТА: <div id="totalProgress" class="dash-val">0%</div></div>
     <div>ГОТОВЫЕ НОМЕРА: <div id="roomsDone" class="dash-val">0 / 0</div></div>
 </div>
 
 <div class="header">
     <div class="floor-nav" id="floorNav"></div>
-    <div style="text-align:center"><button class="filter-btn" id="probFilter" onclick="toggleProblemFilter()">⚠️ Только проблемы</button></div>
+    <div style="text-align:center"><button class="filter-btn" id="probFilter" onclick="toggleProblemFilter()">⚠️ Только замечания</button></div>
     <div id="summaryPanel" class="summary-panel"></div>
 </div>
 
@@ -92,29 +125,16 @@
     };
 
     function askAccess() {
-        if(isEditMode) {
-            isEditMode = false;
-            updateLockUI();
-            return;
-        }
+        if(isEditMode) { isEditMode = false; updateLockUI(); return; }
         let pass = prompt("Введите код доступа для редактирования:");
-        if(pass === "0000") {
-            isEditMode = true;
-            updateLockUI();
-        } else {
-            alert("Неверный код!");
-        }
+        if(pass === "0000") { isEditMode = true; updateLockUI(); } 
+        else { alert("Неверный код!"); }
     }
 
     function updateLockUI() {
         const btn = document.getElementById('lockBtn');
-        if(isEditMode) {
-            btn.innerText = "🟢 Правка разрешена";
-            btn.classList.add('unlocked');
-        } else {
-            btn.innerText = "🔒 Доступ закрыт";
-            btn.classList.remove('unlocked');
-        }
+        if(isEditMode) { btn.innerText = "🟢 Правка разрешена"; btn.classList.add('unlocked'); } 
+        else { btn.innerText = "🔒 Доступ закрыт"; btn.classList.remove('unlocked'); }
         renderFloor(activeFloor);
     }
 
@@ -126,8 +146,9 @@
     });
 
     function toggle(r, it) {
-        if(!isEditMode) { alert("Сначала включите режим правки кнопкой сверху!"); return; }
-        let next = (((localData[r] && localData[r][it]) || 0) + 1) % 3;
+        if(!isEditMode) { alert("Включите режим правки!"); return; }
+        // Цикл статусов: 0 (серый) -> 1 (зеленый) -> 2 (голубой) -> 3 (желтый) -> 4 (красный) -> 0
+        let next = (((localData[r] && localData[r][it]) || 0) + 1) % 5;
         dbRef.child(r).child(it).set(next);
     }
 
@@ -137,7 +158,7 @@
     }
 
     function toggleRoomVisibility(r) {
-        if(!isEditMode) { alert("Доступ закрыт!"); return; }
+        if(!isEditMode) return;
         if(hiddenRooms.includes(r)) hiddenRooms = hiddenRooms.filter(x => x!==r);
         else hiddenRooms.push(r);
         localStorage.setItem('hidden_rooms', JSON.stringify(hiddenRooms));
@@ -176,12 +197,14 @@
             let tvItems = isSingleTv ? ['ТВ-2000'] : ['ТВ-1800', 'ТВ-2300'];
             let items = [...tvItems, ...furnitureBase];
             
-            if(showOnlyProblems && items.every(it => state[it] === 1)) return;
+            // Фильтр "Только замечания" (красный цвет - статус 4)
+            let hasRed = items.some(it => state[it] === 4);
+            if(showOnlyProblems && !hasRed) return;
             if(isHidden && !isEditMode) return; 
 
             if(!isHidden) {
-                tvItems.forEach(tv => { stats["ТВ"].total++; if(state[tv]===1) stats["ТВ"].ready++; });
-                furnitureBase.forEach(it => { stats[it].total++; if(state[it]===1) stats[it].ready++; });
+                tvItems.forEach(tv => { stats["ТВ"].total++; if(state[tv] >= 1 && state[tv] <= 3) stats["ТВ"].ready++; });
+                furnitureBase.forEach(it => { stats[it].total++; if(state[it] >= 1 && state[it] <= 3) stats[it].ready++; });
             }
 
             const card = document.createElement('div');
@@ -196,7 +219,7 @@
                 <textarea class="input-sub" ${!isEditMode?'disabled':''} placeholder="Заметки" onchange="saveData('${r}','note',this.value)">${state.note||''}</textarea>`;
             grid.appendChild(card);
         });
-        summaryPanel.innerHTML = Object.keys(stats).map(k => `<div class="stat-item ${stats[k].ready===stats[k].total?'complete':''}">${k}: ${stats[k].ready}/${stats[k].total}</div>`).join('');
+        summaryPanel.innerHTML = Object.keys(stats).map(k => `<div class="stat-item active">${k}: ${stats[k].ready}/${stats[k].total}</div>`).join('');
     }
 
     function updateDashboard() {
@@ -211,7 +234,12 @@
                 const c = config[f];
                 const isSingleTv = c.singleTv?.includes(parseInt(r)) || r.includes("Горничная") || r === "106/1";
                 let its = isSingleTv ? ['ТВ-2000', ...furnitureBase] : ['ТВ-1800', 'ТВ-2300', ...furnitureBase];
-                its.forEach(it => { totalItems++; if(localData[r]?.[it] === 1) readyItems++; else roomReady = false; });
+                its.forEach(it => { 
+                    totalItems++; 
+                    let s = localData[r]?.[it] || 0;
+                    if(s >= 1 && s <= 3) readyItems++; // Считаем готовыми 1, 2 и 3 выезды
+                    else roomReady = false; 
+                });
                 if(roomReady) readyRooms++;
             });
         }
@@ -228,7 +256,7 @@
         b.onclick = () => { document.querySelectorAll('.floor-btn').forEach(btn => btn.classList.remove('active')); b.classList.add('active'); renderFloor(i); };
         const eye = document.createElement('button'); eye.className = 'toggle-floor' + (disabledFloors.includes(i)?' off':''); eye.innerText = '👁';
         eye.onclick = () => {
-            if(!isEditMode) { alert("Доступ закрыт!"); return; }
+            if(!isEditMode) return;
             if(disabledFloors.includes(i)) disabledFloors = disabledFloors.filter(x => x!==i); else disabledFloors.push(i);
             localStorage.setItem('disabled_floors', JSON.stringify(disabledFloors));
             eye.classList.toggle('off'); updateDashboard(); renderFloor(activeFloor);
