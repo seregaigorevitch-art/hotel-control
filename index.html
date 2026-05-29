@@ -2,7 +2,7 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <title>HOTEL ONLINE CONTROL v5.4 PRO</title>
+    <title>HOTEL ONLINE CONTROL v5.5 PRO</title>
     <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-database-compat.js"></script>
     
@@ -23,7 +23,6 @@
         .lock-btn { position: fixed; top: 10px; left: 10px; padding: 8px 15px; border-radius: 8px; border: none; cursor: pointer; font-weight: bold; z-index: 1000; background: #e74c3c; color: white; box-shadow: 0 2px 5px rgba(0,0,0,0.2); }
         .lock-btn.unlocked { background: #2ecc71; }
         
-        /* Легенда цветов */
         .legend { background: white; padding: 10px; border-radius: 12px; margin-top: 45px; display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; font-size: 12px; font-weight: bold; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
         .legend-item { display: flex; align-items: center; gap: 5px; }
         .dot { width: 12px; height: 12px; border-radius: 3px; }
@@ -56,7 +55,6 @@
         .items { display: flex; flex-wrap: wrap; gap: 4px; }
         .btn { padding: 6px 7px; border-radius: 4px; border: 1px solid #ddd; font-size: 10px; cursor: pointer; font-weight: 700; background: #f8f9fa; transition: 0.2s; }
         
-        /* Цвета статусов */
         .btn.status-1 { background: var(--success); color: white; border-color: var(--success); }
         .btn.status-2 { background: var(--trip2); color: white; border-color: var(--trip2); }
         .btn.status-3 { background: var(--trip3); color: #000; border-color: var(--trip3); }
@@ -112,16 +110,17 @@
     let hiddenRooms = JSON.parse(localStorage.getItem('hidden_rooms')) || [];
 
     const furnitureBase = ["Тумбы", "Стол", "Кухня", "Шкаф", "Санузел", "Прихожая"];
+    
     const config = {
-        1: { range: [1, 13], singleTv: [6, 13], eyeRooms: [10], g: 0 },
-        2: { range: [14, 31], singleTv: [14, 15, 16, 25, 31], eyeRooms: [17, 28], g: 2 },
-        3: { range: [32, 47], singleTv: [32, 33, 34, 42, 47], g: 2 },
-        4: { range: [48, 63], singleTv: [48, 49, 50, 58, 63], g: 2 },
-        5: { range: [64, 79], singleTv: [64, 65, 66, 74, 79], g: 2 },
-        6: { range: [80, 95], singleTv: [80, 81, 82, 90, 95], g: 2 },
-        7: { range: [96, 111], singleTv: [96, 97, 98, 106, 111], extra: ["106/1"], g: "special_7" },
-        8: { range: [112, 127], singleTv: [112, 113, 114, 127], eyeRooms: [122], g: 1 },
-        9: { range: [128, 143], singleTv: [128, 129, 130, 143], eyeRooms: [138], g: 1 }
+        1: { range: [1, 13], singleTv: [6, 13], eyeRooms: [10], extra: [] },
+        2: { range: [14, 31], singleTv: [14, 15, 16, 25, 31], eyeRooms: [17, 28], extra: ["14А", "25А"] },
+        3: { range: [32, 47], singleTv: [32, 33, 34, 42, 47], extra: ["32А", "43А"] },
+        4: { range: [48, 63], singleTv: [48, 49, 50, 58, 63], extra: ["48А", "59А"] },
+        5: { range: [64, 79], singleTv: [64, 65, 66, 74, 79], extra: ["64А", "75А"] },
+        6: { range: [80, 95], singleTv: [80, 81, 82, 90, 95], extra: ["80А", "91А"] },
+        7: { range: [96, 111], singleTv: [96, 97, 98, 106, 111], extra: ["96А", "106А (106/1)"] },
+        8: { range: [112, 127], singleTv: [112, 113, 114, 127], eyeRooms: [122], extra: ["112А"] },
+        9: { range: [128, 143], singleTv: [128, 129, 130, 143], eyeRooms: [138], extra: ["128А"] }
     };
 
     function askAccess() {
@@ -147,7 +146,6 @@
 
     function toggle(r, it) {
         if(!isEditMode) { alert("Включите режим правки!"); return; }
-        // Цикл статусов: 0 (серый) -> 1 (зеленый) -> 2 (голубой) -> 3 (желтый) -> 4 (красный) -> 0
         let next = (((localData[r] && localData[r][it]) || 0) + 1) % 5;
         dbRef.child(r).child(it).set(next);
     }
@@ -171,11 +169,6 @@
         let rooms = [];
         for(let i = c.range[0]; i <= c.range[1]; i++) rooms.push(i.toString());
         if(c.extra) rooms.push(...c.extra);
-        if(c.g === "special_7") rooms.push("Горничная 2мп");
-        else {
-            if(c.g >= 1) rooms.push("Горничная 1мп");
-            if(c.g >= 2) rooms.push("Горничная 2мп");
-        }
         return rooms;
     }
 
@@ -193,11 +186,14 @@
         rooms.forEach(r => {
             const isHidden = hiddenRooms.includes(r);
             const state = localData[r] || {};
-            const isSingleTv = c.singleTv?.includes(parseInt(r)) || r.includes("Горничная") || r === "106/1";
+            
+            // Проверка ТВ: если номер заканчивается на А или это доп. номера
+            const isA = r.includes("А") || r.includes("/") || r.includes("(");
+            const isSingleTv = c.singleTv?.includes(parseInt(r)) || isA;
+            
             let tvItems = isSingleTv ? ['ТВ-2000'] : ['ТВ-1800', 'ТВ-2300'];
             let items = [...tvItems, ...furnitureBase];
             
-            // Фильтр "Только замечания" (красный цвет - статус 4)
             let hasRed = items.some(it => state[it] === 4);
             if(showOnlyProblems && !hasRed) return;
             if(isHidden && !isEditMode) return; 
@@ -232,13 +228,13 @@
                 totalRooms++;
                 let roomReady = true;
                 const c = config[f];
-                const isSingleTv = c.singleTv?.includes(parseInt(r)) || r.includes("Горничная") || r === "106/1";
+                const isA = r.includes("А") || r.includes("/") || r.includes("(");
+                const isSingleTv = c.singleTv?.includes(parseInt(r)) || isA;
                 let its = isSingleTv ? ['ТВ-2000', ...furnitureBase] : ['ТВ-1800', 'ТВ-2300', ...furnitureBase];
                 its.forEach(it => { 
                     totalItems++; 
                     let s = localData[r]?.[it] || 0;
-                    if(s >= 1 && s <= 3) readyItems++; // Считаем готовыми 1, 2 и 3 выезды
-                    else roomReady = false; 
+                    if(s >= 1 && s <= 3) readyItems++; else roomReady = false; 
                 });
                 if(roomReady) readyRooms++;
             });
